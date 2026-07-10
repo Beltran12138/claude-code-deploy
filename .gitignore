@@ -1,0 +1,13 @@
+# 本地凭据（绝不可提交）
+*.env
+.claude-deepseek-env
+.env
+**/*.key
+**/secrets*
+
+# macOS
+.DS_Store
+
+# 编辑器
+.vscode/
+.idea/
