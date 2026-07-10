@@ -43,7 +43,7 @@ CLAUDE_MODEL=deepseek-v4-flash bash install.sh   # 重跑覆盖配置，换 flas
 | `command not found: claude` | npm 全局路径不在 PATH | `npm config get prefix` 看路径，加进 PATH（`export PATH="$(npm config get prefix)/bin:$PATH"`） |
 | 自测 `401` / `unauthorized` | DeepSeek key 错或过期 | 重跑 `bash install.sh` 填新 key |
 | 自测 `000` | 网络不通 / 代理 | 查公司代理是否放行 `api.deepseek.com` |
-| 多轮对话后 `400 thinking mode` | Claude Code + DeepSeek thinking 已知不兼容（[cc-switch#3246](https://github.com/farion1231/cc-switch/issues/3246)） | 重开会话；或改 `~/.claude-deepseek-env` 把 `CLAUDE_CODE_EFFORT_LEVEL=max` 改 `low`/删除后重开终端 |
+| 多轮对话后 `400 thinking mode` | Claude Code + DeepSeek thinking 协议层不兼容（[cc-switch#3246](https://github.com/farion1231/cc-switch/issues/3246)） | **v0.2 Mac 实测未触发**（v2.1.206 + max effort 多轮正常）；若遇：重开会话，或把 `~/.claude-deepseek-env` 里 `CLAUDE_CODE_EFFORT_LEVEL=max` 改 `low`/删除 |
 | 贴图 / 多模态失败 | DeepSeek `/anthropic` 不支持 image / document | 文本任务用，别贴图（[兼容性表](https://api-docs.deepseek.com/guides/anthropic_api/)） |
 | 部分 MCP 工具异常 | `mcp_tool_use` block 不支持（普通 `tool_use` 支持） | 待实测，反馈给 IT |
 

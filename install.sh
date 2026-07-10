@@ -92,9 +92,17 @@ CODE="$(curl -s -o "$TF" -w '%{http_code}' --max-time 25 \
   -H "Authorization: Bearer ${DK}" \
   -d '{"model":"'"${MODEL}"'","max_tokens":20,"messages":[{"role":"user","content":"say hi in 3 words"}]}')"
 if [ "${CODE}" = "200" ]; then
+  # DeepSeek V4 默认开 thinking，content[0] 可能是 thinking block，遍历找 text
   REPLY="$(python3 -c 'import json,sys
-try: d=json.load(open(sys.argv[1])); print(d["content"][0]["text"])
-except Exception: print("(解析失败)")' "$TF" 2>/dev/null | head -c 120)"
+try:
+    d=json.load(open(sys.argv[1]))
+    txt=None
+    for b in d.get("content",[]):
+        if isinstance(b,dict) and b.get("type")=="text":
+            txt=b.get("text"); break
+    print(txt or "(HTTP 200，响应无 text block)")
+except Exception:
+    print("(HTTP 200，响应解析异常)")' "$TF" 2>/dev/null | head -c 120)"
   ok "✅ DeepSeek /anthropic 打通（HTTP 200）"
   info "回复：${REPLY}"
 else
