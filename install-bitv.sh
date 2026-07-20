@@ -135,6 +135,10 @@ echo "【4/6】启/重启 CCR..."
 # 若已有 launchd，先卸载再装（幂等）；否则尝试 ccr 命令 + 写 launchd
 launchctl unload "$CCR_PLIST" 2>/dev/null || true
 CCR_BIN="$(command -v ccr)"
+# launchd 不带 login shell 的 PATH → nvm/homebrew 装的 node 找不到 → ccr 起不来
+# 必须显式注入 PATH（Qoder 2026-07-20 实证：plist 不补 PATH 则 CCR launchd 启动失败）
+NODE_DIR="$(dirname "$(command -v node)")"
+USER_PATH="${NODE_DIR}:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 cat > "$CCR_PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -142,6 +146,10 @@ cat > "$CCR_PLIST" <<EOF
   <key>Label</key><string>com.local.ccr</string>
   <key>ProgramArguments</key>
   <array><string>${CCR_BIN}</string><string>start</string></array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key><string>${USER_PATH}</string>
+  </dict>
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><true/>
   <key>ThrottleInterval</key><integer>10</integer>
@@ -195,6 +203,12 @@ else
   info "查 CCR 日志：tail -50 $CCR_DIR/ccr.err.log"
 fi
 rm -f "$TF"
+
+# billing 持久化坑（Qoder 2026-07-20 实证）：CCR 重启从 SQLite 恢复，会覆盖 gateway.config.json 的 billing=false
+warn "billing 已在 gateway.config.json 设 false，但 CCR 重启会从 SQLite 恢复覆盖它"
+info "为确保 billing 真关闭 + 默认渠道=bitv-glm，装完去 CCR Web UI 手动确认一次："
+info "  http://localhost:3458  （端口以你机器 CCR 实际占用为准；可能 3456/3458/3459）"
+info "  确认两项：billing 已关闭 / 默认渠道 = bitv-glm"
 
 cat <<EOF
 
