@@ -14,7 +14,7 @@ set -uo pipefail
 
 CCR_GATEWAY_PORT=3457          # CCR gateway（处理 /v1/messages 的真入口；3456/3459 是管理 UI）
 PROXY_PORT=8423
-PROXY_REPO="https://github.com/Beltran12138/chat-path-rewrite-proxy"
+PROXY_RAW="https://raw.githubusercontent.com/Beltran12138/chat-path-rewrite-proxy/main"
 PROXY_CLONE_DIR="$HOME/chat-path-rewrite-proxy"
 CCR_DIR="$HOME/.claude-code-router"
 ENV_FILE="$HOME/.claude-bitv-env"
@@ -62,8 +62,12 @@ if curl -fsS -m 3 "http://localhost:${PROXY_PORT}/v1/models" >/dev/null 2>&1 \
   ok "proxy 已在 :${PROXY_PORT}（跳过安装）"
 else
   warn "proxy 未跑，开始装..."
-  if [ ! -d "$PROXY_CLONE_DIR" ]; then
-    git clone "$PROXY_REPO" "$PROXY_CLONE_DIR" >/dev/null 2>&1 || die "clone proxy 失败（查 GitHub 连通）"
+  # 公司网封 github（git clone 挂）→ 改走 raw 拉 proxy 三文件（raw.githubusercontent 未被封）
+  if [ ! -f "$PROXY_CLONE_DIR/install-proxy.sh" ]; then
+    mkdir -p "$PROXY_CLONE_DIR"
+    for f in install-proxy.sh proxy.js package.json; do
+      curl -fsSL "$PROXY_RAW/$f" -o "$PROXY_CLONE_DIR/$f" || die "拉取 proxy/$f 失败（raw 连通？）"
+    done
   fi
   info "跑 proxy 的 install-proxy.sh（会让你粘 BitV key）..."
   bash "$PROXY_CLONE_DIR/install-proxy.sh" || die "proxy 安装失败，见上方输出"
