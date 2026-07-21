@@ -62,13 +62,11 @@ if curl -fsS -m 3 "http://localhost:${PROXY_PORT}/v1/models" >/dev/null 2>&1 \
   ok "proxy 已在 :${PROXY_PORT}（跳过安装）"
 else
   warn "proxy 未跑，开始装..."
-  # 公司网封 github（git clone 挂）→ 改走 raw 拉 proxy 三文件（raw.githubusercontent 未被封）
-  if [ ! -f "$PROXY_CLONE_DIR/install-proxy.sh" ]; then
-    mkdir -p "$PROXY_CLONE_DIR"
-    for f in install-proxy.sh proxy.js package.json; do
-      curl -fsSL "$PROXY_RAW/$f" -o "$PROXY_CLONE_DIR/$f" || die "拉取 proxy/$f 失败（raw 连通？）"
-    done
-  fi
+  # 公司网封 github（git clone 挂）→ raw 拉 proxy 三文件；每次强制覆盖，防复用旧/损坏文件
+  mkdir -p "$PROXY_CLONE_DIR"
+  for f in install-proxy.sh proxy.js package.json; do
+    curl -fsSL "$PROXY_RAW/$f" -o "$PROXY_CLONE_DIR/$f" || die "拉取 proxy/$f 失败（raw 连通？）"
+  done
   info "跑 proxy 的 install-proxy.sh（会让你粘 BitV key）..."
   bash "$PROXY_CLONE_DIR/install-proxy.sh" || die "proxy 安装失败，见上方输出"
   ok "proxy 已装并自启"
