@@ -65,7 +65,8 @@ else
   # 公司网封 github（git clone 挂）→ raw 拉 proxy 三文件；每次强制覆盖，防复用旧/损坏文件
   mkdir -p "$PROXY_CLONE_DIR"
   for f in install-proxy.sh proxy.js package.json; do
-    curl -fsSL "$PROXY_RAW/$f" -o "$PROXY_CLONE_DIR/$f" || die "拉取 proxy/$f 失败（raw 连通？）"
+    # > 重定向而非 -o：curl -o 在某些 Mac 目录覆盖已存在文件会报 (56)（实证 2026-07-22）
+    curl -fsSL "$PROXY_RAW/$f" > "$PROXY_CLONE_DIR/$f" || die "拉取 proxy/$f 失败（raw 连通？）"
   done
   info "跑 proxy 的 install-proxy.sh（会让你粘 BitV key）..."
   bash "$PROXY_CLONE_DIR/install-proxy.sh" || die "proxy 安装失败，见上方输出"
