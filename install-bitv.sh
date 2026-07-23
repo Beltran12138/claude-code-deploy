@@ -152,7 +152,7 @@ exec claude "$@"
 EOF
 chmod +x "$LAUNCHER"
 ok "启动器已装：$LAUNCHER"
-case ":$PATH:" in *":$(dirname "$LAUNCHER"):"*) : ;; *) warn "$(dirname "$LAUNCHER") 不在 PATH——用全路径调 $LAUNCHER，或加进 ~/.zshrc: export PATH=\"\$HOME/bin:\$PATH\"" ;; esac
+case ":$PATH:" in *":$(dirname "$LAUNCHER"):"*) : ;; *) warn "$(dirname "$LAUNCHER") 不在 PATH——用全路径调 ${LAUNCHER}，或加进 ~/.zshrc: export PATH=\"\$HOME/bin:\$PATH\"" ;; esac
 
 # ---- 6. 自测（真发一条 Anthropic /v1/messages，走完整翻译链）----
 echo "【6/6】自测（Claude 协议 /v1/messages → 翻译 → BitV）..."
