@@ -102,23 +102,28 @@ echo "【2/6】安装 Claude Code..."
 npm install -g @anthropic-ai/claude-code >/dev/null 2>&1 || die "npm 装 claude-code 失败（查网络/npm registry）"
 ok "Claude Code $(claude --version 2>/dev/null || echo '已装')"
 
-# ---- 3. 确保 proxy 在跑（:8423；带 Anthropic 翻译的新版）----
-echo "【3/6】确保 proxy 在跑（:${PROXY_PORT}，带 /v1/messages 翻译）..."
-# 强制重装：v1 机器上的旧 proxy.js 是纯 path-rewrite，不会翻译 /v1/messages，必须换成新版
+# ---- 3. 确保 proxy 在跑且为含翻译的 v2（:8423）----
+echo "【3/6】确保 proxy 在跑（含 /v1/messages 翻译的 v2）..."
 mkdir -p "$PROXY_DIR"
 fetch "$PROXY_RAW/install-proxy.sh" "$PROXY_DIR/install-proxy.sh" sentinel
 fetch "$PROXY_RAW/proxy.js"         "$PROXY_DIR/proxy.js"         sentinel
 fetch "$PROXY_RAW/package.json"     "$PROXY_DIR/package.json"     json
 info "proxy 文件已就位（最新版，完整性已校验）"
-if curl -fsS -m 3 "http://localhost:${PROXY_PORT}/v1/models" >/dev/null 2>&1; then
-  info "proxy 已在线——重启以加载新版 proxy.js（含翻译层）"
-  launchctl kickstart -k "gui/$(id -u)/com.bitv.proxy" 2>/dev/null || bash "$PROXY_DIR/install-proxy.sh" || die "proxy 重装失败"
+# 能力探针判断运行中的 proxy 是否已是 v2（含翻译）：是则跳过，免误重装/免重复问 key
+if curl -fsS -m 3 "http://localhost:${PROXY_PORT}/v1/proxy-info" 2>/dev/null | grep -q '"anthropic":true'; then
+  ok "proxy 已是 v2（含 Anthropic 翻译），跳过安装"
 else
-  warn "proxy 未跑，开始装（会让你粘 BitV key）..."
+  # 未装 / 旧版纯透传（无翻译，会把 /v1/messages 原样透传给上游→500 提供商不存在）→ 装或升级。
+  # install-proxy.sh 幂等：.env 已有 key 则复用不再问；并杀掉抢占端口的旧游离进程再交给 launchd。
+  warn "proxy 未装或为旧版 → 安装/升级（首次装会让你粘一次 BitV key；升级会复用已存 key）"
   bash "$PROXY_DIR/install-proxy.sh" || die "proxy 安装失败，见上方输出"
 fi
 sleep 2
-curl -fsS -m 5 "http://localhost:${PROXY_PORT}/v1/models" >/dev/null 2>&1 && ok "proxy 在线（:${PROXY_PORT}）" || warn "proxy 端口暂未响应，稍后自测再看"
+if curl -fsS -m 5 "http://localhost:${PROXY_PORT}/v1/proxy-info" 2>/dev/null | grep -q '"anthropic":true'; then
+  ok "proxy 在线且为 v2（:${PROXY_PORT}）"
+else
+  warn "proxy 暂未就绪或非 v2——稍后自测再看（tail -50 $PROXY_DIR/proxy.err.log）"
+fi
 
 # ---- 4. 写 ~/.claude-bitv-env（隔离，不进 zshrc）----
 echo "【4/6】写隔离环境 ${ENV_FILE}..."
@@ -166,7 +171,9 @@ else
   warn "自测 HTTP=${CODE}（未拿到 Anthropic 回包）——不阻塞安装，多半是下面几种："
   info "1. 没连公司 VPN → BitV 上游(内网 30.100.0.3)不通；连 VPN 后自然可用"
   info "2. glm4.7 冷启动 30-60s → 稍等重试"
-  info "3. BitV key 无效/过期 → 找何总；或 proxy 没起：tail -50 $PROXY_DIR/proxy.err.log"
+  info "3. 504 = 网关 60s 超时撞 glm4.7 慢 reasoning（网关天花板，非配置错）。本自测是"
+  info "   非流式最易中招；真 claude-bitv 走流式更抗。根治=运维把网关超时抬到 120s+"
+  info "4. BitV key 无效/过期 → 找何总；或 proxy 没起：tail -50 $PROXY_DIR/proxy.err.log"
   info "响应：$(head -c 200 "$TF")"
 fi
 rm -f "$TF"
